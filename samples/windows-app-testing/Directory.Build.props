@@ -1,0 +1,9 @@
+<Project>
+	<!-- The sample apps stand alone: this file, and the two beside it, stop the repository's own build settings reaching them. -->
+	<PropertyGroup>
+		<TargetFramework>net10.0-windows</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<EnableWindowsTargeting>true</EnableWindowsTargeting>
+	</PropertyGroup>
+</Project>

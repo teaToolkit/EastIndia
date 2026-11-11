@@ -1,0 +1,7 @@
+# escape=`
+# The sample service installed as a Windows service that starts with Windows, with its port open in the firewall.
+FROM eastindia/development:latest
+SHELL ["powershell.exe", "-NoProfile", "-Command"]
+COPY SampleService/ C:/apps/SampleService/
+RUN New-Service -Name SampleService -BinaryPathName 'C:\apps\SampleService\SampleService.exe' -StartupType Automatic | Out-Null
+RUN New-NetFirewallRule -DisplayName SampleService -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8080 | Out-Null

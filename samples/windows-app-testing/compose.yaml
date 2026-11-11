@@ -1,0 +1,16 @@
+# One server running the sample service, and one client whose desktop runs the sample desktop and tray apps.
+services:
+  server:
+    image: sample/server:1
+    healthcheck:
+      test: ["CMD", "curl.exe", "-fs", "http://127.0.0.1:8080/health"]
+      interval: 5s
+    networks: [lab]
+  client:
+    image: eastindia/development:latest
+    depends_on:
+      server:
+        condition: service_healthy
+    networks: [lab]
+networks:
+  lab: {}
