@@ -127,7 +127,7 @@ The command takes about half an hour. It installs Windows in a machine of its ow
 * EastIndia's desktop helper, started at every sign-in, which works the screen, keyboard and pointer for the desktop commands;
 * an OpenSSH server.
 
-It then reads which edition and build it installed, and when an evaluation copy expires. Last, it imports the disk as a base, which boots it once more to check, in order:
+It then reads which edition and build it installed, and when an evaluation copy expires, and turns Windows Update off. Every machine is short-lived, so updating Windows would only spend the machine's processor time, memory and network on work that is thrown away with it. Microsoft Defender still looks for its own updates, and its downloads fail. If any Windows Update setting cannot be made, the command fails with `CAPABILITY_MISSING` and the error, and keeps no image. Last, it imports the disk as a base, which boots it once more to check, in order:
 
 1. `guest-service`: the guest service answers;
 2. `fast-startup`: Fast Startup is off, so that stopping and starting a machine boots Windows afresh;
@@ -573,6 +573,8 @@ A test runner written in C#, Python or JavaScript can call EastIndia's API throu
 | C# | NuGet `EastIndia.Client` (not yet published) | |
 | Python 3.10 and later | PyPI `endia`, imported as `endia` | [endia-python](https://github.com/teaToolkit/endia-python/blob/main/REFERENCE.md) |
 | Node 20 and later, with TypeScript types | npm `endia` | [endia-node](https://github.com/teaToolkit/endia-node/blob/main/REFERENCE.md) |
+
+The Python library installs with `pip install endia` and is imported with `import endia`. Until EastIndia 0.16.80 it was shipped as a wheel named `eastindia_client`; `endia` has every public class and function that package had and reads the same environment variables, so moving to it means changing the import from `eastindia_client` to `endia`.
 
 Each library connects from the environment as `endia` does, with `EastIndiaClient.FromEnvironment()`, `EastIndiaClient.from_env()` or `EastIndiaClient.fromEnv()`. It uses `EASTINDIA_HOST` with the certificate files in `EASTINDIA_CERT_PATH` when they are set, then the context that `EASTINDIA_CONTEXT` names, then the current context in `~/.eastindia`. A program that runs where `endia version` works therefore needs no settings of its own.
 

@@ -33,16 +33,39 @@ endia images      # lists the images you can start machines from
 
 `endia version` exits with 1 and names the cause when the service cannot be reached or refuses the certificate. Instead of a context, `EASTINDIA_HOST=tcp://host.docker.internal:7443` and `EASTINDIA_CERT_PATH=<folder holding ca.pem, cert.pem and key.pem>` work as `DOCKER_HOST` and `DOCKER_CERT_PATH` do.
 
+### The Python client
+
+A test written in Python can call the service through the `endia` package on PyPI instead of running the command line:
+
+```sh
+pip install endia
+```
+
+```python
+from endia import EastIndiaClient
+
+with EastIndiaClient.from_env() as client:
+    for machine in client.machines.list():
+        print(machine)
+```
+
+`EastIndiaClient.from_env()` connects as `endia` does: with `EASTINDIA_HOST` and `EASTINDIA_CERT_PATH` when they are set, then the context that `EASTINDIA_CONTEXT` names, then the current context, from `EASTINDIA_CONFIG` or `~/.eastindia`. Until EastIndia 0.16.80 the package was shipped as a wheel named `eastindia_client`. `endia` has every public class and function that package had, and reads the same environment variables, so moving to it means changing the import from `eastindia_client` to `endia`.
+
 ### The images you start from
+
+Build your application's own image on `eastindia/development:latest`, the development image (see "Images for your application"). It is the root image, `eastindia/root:latest`, with what a test of a Windows application usually needs added:
+
+* the developer tools: the .NET 10 SDK (10.0.403, with the .NET, ASP.NET Core and Windows Desktop runtimes), Python 3.15.2, Node.js 26.13.0 and Git for Windows 2.56.0.4, with Git's `bash.exe` on the path;
+* elevation prompts shown on the normal desktop, so that EastIndia can answer them (see "Elevation prompts").
 
 | Image | What it holds |
 |---|---|
-| `eastindia/root:latest` | Windows 11 IoT Enterprise LTSC 2024, evaluation edition, build 26100. Two accounts: `testuser`, a standard user signed in automatically, and `testadmin`, an administrator. EastIndia's guest service and desktop helper, an OpenSSH server, and `curl.exe`. |
-| `eastindia/development:latest` | The root image plus the .NET 10 SDK (10.0.403, with the .NET, ASP.NET Core and Windows Desktop runtimes), Python 3.15.2, Node.js 26.13.0 and Git for Windows 2.56.0.4, with Git's `bash.exe` on the path. |
+| `eastindia/development:latest` | The image to build on: the root image with the developer tools and elevation-prompt answering above. |
+| `eastindia/root:latest` | The minimal base the development image is built from, for a test that really needs less: Windows 11 IoT Enterprise LTSC 2024, evaluation edition, build 26100. Two accounts: `testuser`, a standard user signed in automatically, and `testadmin`, an administrator. EastIndia's guest service and desktop helper, an OpenSSH server, and `curl.exe`. Its elevation prompts appear on the secure screen, which EastIndia cannot answer. |
 
-Build your application's own image on top of one of these (see "Images for your application"). The evaluation edition stops working 90 days after its base was prepared: on 6 February 2027 for the current images. Each image records the date in its `eastindia.evaluation.expires` label, and `endia images` warns as that date approaches. Its desktop shows the edition and its licence status as a watermark in the bottom-right corner, which appears in screenshots. On a machine's first boot the watermark wrongly says 'Windows License is expired'; Windows' licensing still counts the machine as licensed, and after a restart the watermark gives the days left. The wrong text does not affect tests.
+Windows Update is off in both images. A machine is short-lived, so updating Windows would only spend the machine's processor time, memory and network on work that is thrown away with it. Microsoft Defender still looks for its own updates, and its downloads fail.
 
-`eastindia/development:latest` also lets EastIndia answer Windows' elevation prompts (see "Elevation prompts"); `eastindia/root:latest` does not.
+The evaluation edition stops working 90 days after its base was prepared: on 6 February 2027 for the current images. Each image records the date in its `eastindia.evaluation.expires` label, and `endia images` warns as that date approaches. Its desktop shows the edition and its licence status as a watermark in the bottom-right corner, which appears in screenshots. On a machine's first boot the watermark wrongly says 'Windows License is expired'; Windows' licensing still counts the machine as licensed, and after a restart the watermark gives the days left. The wrong text does not affect tests.
 
 ## The shape of a test
 
