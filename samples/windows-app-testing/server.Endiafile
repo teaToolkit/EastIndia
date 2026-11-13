@@ -1,6 +1,6 @@
 # escape=`
 # The sample service installed as a Windows service that starts with Windows, with its port open in the firewall.
-FROM eastindia/development:latest
+FROM sample/tools:1
 SHELL ["powershell.exe", "-NoProfile", "-Command"]
 COPY SampleService/ C:/apps/SampleService/
 RUN New-Service -Name SampleService -BinaryPathName 'C:\apps\SampleService\SampleService.exe' -StartupType Automatic | Out-Null

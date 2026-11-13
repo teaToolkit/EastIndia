@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Tests the three sample apps on two EastIndia machines (Hyper-V virtual machines), keeps what each step saw in ./evidence/<run>,
 # and always removes the machines. <run> is sample-<UTC date and time>, which also names the Compose project.
-# Needs: the endia command on the path, able to reach the service; the .NET 10 SDK; jq; and the image
-# eastindia/development:latest on the EastIndia service.
+# Needs: the endia command on the path, able to reach the service; the .NET 10 SDK; jq; curl; and a root image
+# tagged lab/win11:base on the EastIndia service (endia base prepare ... --tag lab/win11:base).
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -14,13 +14,18 @@ fleet() { endia compose -p "$run" "$@"; }
 fail() { echo "FAIL: $*" >&2; exit 1; }
 step() { echo "== $*"; }
 
-# 1. Build the apps for Windows. They are framework-dependent: the development image has the .NET runtimes.
+# 1. Build the apps for Windows. They are framework-dependent: the tools layer has the .NET runtimes.
 step "publish the sample apps"
 for app in SampleService SampleDesktop SampleTray; do
 	dotnet publish "$app" -c Release -r win-x64 --self-contained false -o "publish/$app" -v quiet
 done
 
-# 2. Build the server image: the development image with the service installed. A second build with the same inputs is a cache hit.
+# 2. Build the tools layer over the root image, then the server image over the tools layer, with the service installed.
+#    A second build with the same inputs is a cache hit.
+step "build sample/tools:1"
+mkdir -p tools
+[ -f tools/dotnet-install.ps1 ] || curl -fsSL https://dot.net/v1/dotnet-install.ps1 -o tools/dotnet-install.ps1
+pc build -t sample/tools:1 -f tools.Endiafile tools
 step "build sample/server:1"
 cp server.Endiafile publish/Endiafile
 pc build -t sample/server:1 publish

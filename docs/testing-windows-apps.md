@@ -53,19 +53,16 @@ with EastIndiaClient.from_env() as client:
 
 ### The images you start from
 
-Build your application's own image on `eastindia/development:latest`, the development image (see "Images for your application"). It is the root image, `eastindia/root:latest`, with what a test of a Windows application usually needs added:
+EastIndia ships no Windows images. The PC's owner prepares a root image once, from Microsoft's Windows 11 IoT Enterprise LTSC evaluation ISO, with `endia base prepare` ("Building and layering images" in [Using EastIndia](using-eastindia.md) shows how). This guide calls it `lab/win11:base`. It holds Windows, EastIndia's guest service and desktop helper, an OpenSSH server and `curl.exe`, and two accounts: `testuser`, a standard user signed in automatically, and `testadmin`, an administrator.
 
-* the developer tools: the .NET 10 SDK (10.0.403, with the .NET, ASP.NET Core and Windows Desktop runtimes), Python 3.15.2, Node.js 26.13.0 and Git for Windows 2.56.0.4, with Git's `bash.exe` on the path;
-* elevation prompts shown on the normal desktop, so that EastIndia can answer them (see "Elevation prompts").
+Build two layers over the root image:
 
-| Image | What it holds |
-|---|---|
-| `eastindia/development:latest` | The image to build on: the root image with the developer tools and elevation-prompt answering above. |
-| `eastindia/root:latest` | The minimal base the development image is built from, for a test that really needs less: Windows 11 IoT Enterprise LTSC 2024, evaluation edition, build 26100. Two accounts: `testuser`, a standard user signed in automatically, and `testadmin`, an administrator. EastIndia's guest service and desktop helper, an OpenSSH server, and `curl.exe`. Its elevation prompts appear on the secure screen, which EastIndia cannot answer. |
+1. **A tools layer.** It installs the runtimes your application needs, and sets the registry line that moves elevation prompts onto the normal desktop, where EastIndia can answer them (see "Elevation prompts"). The sample's `tools.Endiafile` installs the .NET 10 runtime and its desktop runtime and sets that line; `run-tests.sh` builds it as `sample/tools:1`.
+2. **Your application's image** over the tools layer (see "Images for your application").
 
-Windows Update is off in both images. A machine is short-lived, so updating Windows would only spend the machine's processor time, memory and network on work that is thrown away with it. Microsoft Defender still looks for its own updates, and its downloads fail.
+Windows Update is off in the root image. A machine is short-lived, so updating Windows would only spend the machine's processor time, memory and network on work that is thrown away with it. Microsoft Defender still looks for its own updates, and its downloads fail.
 
-The evaluation edition stops working 90 days after its base was prepared: on 6 February 2027 for the current images. Each image records the date in its `eastindia.evaluation.expires` label, and `endia images` warns as that date approaches. Its desktop shows the edition and its licence status as a watermark in the bottom-right corner, which appears in screenshots. On a machine's first boot the watermark wrongly says 'Windows License is expired'; Windows' licensing still counts the machine as licensed, and after a restart the watermark gives the days left. The wrong text does not affect tests.
+The evaluation edition stops working 90 days after its root image was prepared. Each image records the date in its `eastindia.evaluation.expires` label, and `endia images` warns as that date approaches. Its desktop shows the edition and its licence status as a watermark in the bottom-right corner, which appears in screenshots. On a machine's first boot the watermark wrongly says 'Windows License is expired'; Windows' licensing still counts the machine as licensed, and after a restart the watermark gives the days left. The wrong text does not affect tests.
 
 ## The shape of a test
 
@@ -97,7 +94,7 @@ A recipe is an Endiafile, a file in Dockerfile syntax. It installs your applicat
 
 ```dockerfile
 # escape=`
-FROM eastindia/development:latest
+FROM sample/tools:1
 SHELL ["powershell.exe", "-NoProfile", "-Command"]
 COPY SampleService/ C:/apps/SampleService/
 RUN New-Service -Name SampleService -BinaryPathName 'C:\apps\SampleService\SampleService.exe' -StartupType Automatic | Out-Null
@@ -140,7 +137,7 @@ services:
       interval: 5s
     networks: [lab]
   client:
-    image: eastindia/development:latest
+    image: sample/tools:1
     depends_on:
       server:
         condition: service_healthy
@@ -360,7 +357,7 @@ endia desktop uac --program setup.exe --cancel "$m"
 
 `--program` is the file name the prompt shows: the program's, or for an installer package the `.msi` file's. The command refuses a prompt for any other program, and types nothing into it. The password of `testadmin` is the one the EastIndia PC's owner chose when the root image was prepared.
 
-Windows normally shows the prompt on a separate secure screen, which no program can read or press. The image must turn that off with this line in its recipe, which `eastindia/development:latest` already has:
+Windows normally shows the prompt on a separate secure screen, which no program can read or press. The image must turn that off with this line in its recipe, which the sample's `tools.Endiafile` has:
 
 ```dockerfile
 RUN reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System /v PromptOnSecureDesktop /t REG_DWORD /d 0 /f
@@ -381,7 +378,7 @@ The image comes back to your test; nothing is kept on the PC or in the machine. 
 ```yaml
 services:
   client:
-    image: eastindia/development:latest
+    image: sample/tools:1
     x-eastindia:
       screen: 1920x1080
 ```
@@ -414,7 +411,7 @@ Every image runs an OpenSSH server on port 22. To use it from your test, publish
 ```yaml
 services:
   app:
-    image: eastindia/development:latest
+    image: sample/tools:1
     ports:
       - "12222:22"
 ```
@@ -454,7 +451,7 @@ endia ps -a        # nothing of the run is left
 6. starts the tray program and checks its process and the file it writes every five seconds;
 7. collects the files, event-log entries, process list, screenshots and resource use into `evidence/<run>`.
 
-It needs `endia` with a working context, the .NET 10 SDK, `jq`, and `eastindia/development:latest` on the service. It prints `PASS: evidence in evidence/<run>`, or `FAIL:` with the check that failed and exits with 1.
+It needs `endia` with a working context, the .NET 10 SDK, `jq`, `curl`, and a root image tagged `lab/win11:base` on the service, which its `tools.Endiafile` builds on. It prints `PASS: evidence in evidence/<run>`, or `FAIL:` with the check that failed and exits with 1.
 
 ## Limits
 
@@ -464,7 +461,7 @@ It needs `endia` with a working context, the .NET 10 SDK, `jq`, and `eastindia/d
 * **`exec` cannot show windows.** It runs as SYSTEM in session 0. Anything that must appear on the screen starts with `desktop launch`.
 * **The desktop user is a standard user.** Programs that need administrator rights raise an elevation prompt, which `endia desktop uac` answers in images that set `PromptOnSecureDesktop` to 0.
 * **Addresses on the Default Switch change** when the PC restarts. Use names: service names between machines, `host-gateway` for the PC.
-* **The evaluation edition ends on 6 February 2027** for the current images, as their `eastindia.evaluation.expires` label says. Images must be prepared again from a newer Windows disc before then.
+* **The evaluation edition ends** 90 days after the root image was prepared, as each image's `eastindia.evaluation.expires` label says. Prepare the root image again from a newer Windows disc before then, and rebuild the images over it.
 
 ## When something goes wrong
 

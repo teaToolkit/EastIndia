@@ -1,0 +1,10 @@
+# escape=`
+# The tools layer the sample builds on: the root image with the .NET 10 runtimes the sample apps need, and elevation prompts shown on the normal desktop.
+FROM lab/win11:base
+SHELL ["powershell.exe", "-NoProfile", "-Command"]
+WORKDIR C:\setup
+COPY dotnet-install.ps1 .
+RUN .\dotnet-install.ps1 -Channel 10.0 -Runtime dotnet -InstallDir 'C:\Program Files\dotnet'
+RUN .\dotnet-install.ps1 -Channel 10.0 -Runtime windowsdesktop -InstallDir 'C:\Program Files\dotnet'
+RUN [Environment]::SetEnvironmentVariable('Path', $env:Path + ';C:\Program Files\dotnet', 'Machine')
+RUN reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System /v PromptOnSecureDesktop /t REG_DWORD /d 0 /f
