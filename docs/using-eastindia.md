@@ -420,6 +420,14 @@ Each segment may give, in this order: a control type (`Window`, `Button`, `Edit`
 
 **Elevation.** `desktop launch --elevated` starts a program with administrator rights, and is refused when the desktop user is a standard user. In that case, start the program normally and answer its elevation prompt with `desktop uac`.
 
+**Windows of elevated programs.** The part of EastIndia that acts on the desktop runs as the desktop user without administrator rights. Windows does not let such a program press buttons, type or click in the windows of a program that runs with administrator rights, whether it was started with `desktop launch --elevated` or through an elevation prompt. So `invoke`, `click`, `set-value`, `keys`, `pointer`, `inspect`, and `wait` for an element inside such a window fail at once with `ACTION_UNSUPPORTED`, and the message says that the process runs elevated. What still works on those windows: `desktop screenshot`, `desktop windows`, `process inspect`, and `desktop wait` for the window itself, such as `"Window[Completely uninstall]"`. To get past a dialog of an elevated program:
+
+* Start the program without `--elevated` when the test allows it; its dialogs can then be driven as usual.
+* Use the program's own options for running without a dialog, such as a silent, headless or force switch.
+* End the program with `endia process stop` once its work is done.
+
+A machine whose image was built over a root image prepared before EastIndia 0.16.122 gives the earlier, less clear failures instead, such as `Process <pid> shows no window` or `Access is denied`; the cause is the same.
+
 ## Taking screenshots
 
 ```sh
