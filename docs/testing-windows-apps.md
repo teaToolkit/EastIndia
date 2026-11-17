@@ -84,6 +84,15 @@ trap 'endia compose -p "$run" down -v' EXIT
 endia compose -p "$run" up --wait --wait-timeout 900
 ```
 
+Say what the run is for and how far it has got, so that whoever watches the desktop app's Home page can tell a slow run from a stuck one. Give the purpose to `up` with `--purpose "Regression run 412"`, then report each stage and count with `endia update` as the script goes:
+
+```sh
+endia update "$run" --stage "Run tests 2/2" --workload 120
+endia update "$run-client-1" --progress 30
+```
+
+EastIndia never estimates progress: Home's bar moves only when the script reports a count. The user guide in this folder, `using-eastindia.md`, gives the rules in its section 'Saying what a fleet is for and how far it has got', such as which of the fleet or its machines holds the total.
+
 Machines are named `<project>-<service>-<n>`, so the first `client` machine of that run is `$run-client-1`. `up` builds a service's image from its `build` section when the image is missing. `--no-build` builds nothing, so a missing image fails with `NOT_FOUND`; `--build` builds every service that has `build`, even if its image exists.
 
 Every command exits with 0 on success, 1 on a failure, 125 when the command line itself was wrong (nothing was sent) and 130 after Ctrl+C. On a failure, standard error says why. `Error response from EastIndia: <message> (<CODE>)` means the service refused the request. `Cannot connect to the EastIndia service at <address>. Is the service running?` means the command could not reach the service. `--format json` turns any listing into JSON for a program to read.
@@ -156,7 +165,7 @@ endia compose -p "$run" ps
 * **Size.** A machine starts with 2 GiB of memory and grows to its `mem_limit`, or to 4 GiB when none is set. `cpus` sets its processors (default 2). Less than 2 GiB is refused.
 * **Replicas.** `deploy: replicas: 3` gives `client-1` to `client-3`. Commands that act on one replica take `--index`, as in `endia compose exec --index 2 client ...`.
 * **Main process.** A service with no `command` or `entrypoint` keeps running until you stop it, which suits most tests. A service with a `command` behaves like a container: when the program exits, the machine shuts down.
-* **Other keys.** `environment`, `hostname`, `user`, `working_dir`, `labels`, `extra_hosts`, `restart`, `ports`, `volumes` and bind mounts are accepted; any other key is refused with `UNSUPPORTED_FIELD` and its name. `endia compose config` prints the file as EastIndia reads it.
+* **Other keys.** `build`, `entrypoint`, `environment`, `env_file`, `hostname`, `container_name`, `user`, `working_dir`, `labels`, `extra_hosts`, `restart`, `ports`, `expose`, `volumes` and bind mounts, `cpus`, `mem_limit`, `stop_grace_period`, `platform` and `x-eastindia` are accepted; any other key is refused with `UNSUPPORTED_FIELD` and its name. `endia compose config` prints the file as EastIndia reads it.
 
 ## Networks
 
@@ -465,7 +474,7 @@ It needs `endia` with a working context, the .NET 10 SDK, `jq`, `curl`, and a ro
 
 ## When something goes wrong
 
-* `endia operation ls` lists long-running work (builds and `compose up`), and `endia operation logs <id>` shows what it printed.
+* `endia operation ls` lists long-running work (builds, imports, `base prepare`, `compose up` and `compose down`, prunes and image-folder moves), and `endia operation logs <id>` shows what it printed.
 * `endia compose -p "$run" ps -a` shows every machine, stopped ones included, with its state and health.
 * `endia info` lists what needs attention on the service, such as objects whose owner no longer exists.
 * A `desktop` command that fails with `DESKTOP_UNAVAILABLE` found no visible window for the process: the program had not yet shown its window, or had closed it. Wait for the window with `desktop windows` and try again.

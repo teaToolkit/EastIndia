@@ -6,7 +6,7 @@ This repository holds the releases and the user documentation. The service's sou
 
 ## Install
 
-East India needs a Windows PC with Hyper-V enabled, running Windows build 26100 or later.
+East India needs a Windows PC with Hyper-V enabled, running Windows 11 Pro or Enterprise, x64, build 26100 or later.
 
 1. Download `eastindia-<version>.msi` from the [Releases page](https://github.com/teaToolkit/endia/releases). It installs the East India service and the command line, `endia.exe`.
 2. Install it, naming the folder that will hold your images:

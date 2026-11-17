@@ -8,6 +8,7 @@ This guide is for people and for AI agents. It covers installing the service, bu
 
 * **The EastIndia service** runs on the Windows PC that hosts Hyper-V. It does all the work: it creates, starts and removes virtual machines, and talks to the programs inside them.
 * **The `endia` command line** is how you ask the service for work. It runs on the PC itself or in a Docker sandbox on the same PC, and it follows Docker's commands and options wherever Docker has one.
+* **The desktop app**, East India, shows the fleets, machines, images and operations, as Docker Desktop shows containers. It lives in the notification area beside the clock: clicking or double-clicking its icon shows the window, and closing the window in any way (its Close button, Alt+F4 or the taskbar's Close window) hides it again and leaves the app running there. Only **Quit East India** in the icon's menu ends it.
 * **Access** follows Docker Desktop. On the PC, members of the `eastindia-users` group reach the service through a named pipe and need no certificate. A Docker sandbox presents a client certificate instead. Anyone the service lets in may run every command.
 * **An image** is a Windows disk that machines start from. A root image is Windows with EastIndia's programs, which `endia base prepare` installs from a Windows disc; a built image adds the steps of a recipe on top of a parent image.
 * **A machine** is a Hyper-V virtual machine on its own new disk, layered over an image. A machine that is removed takes its disk with it; the image is unchanged.
@@ -26,7 +27,7 @@ EastIndia has no `endia run`. Machines come only from a Compose file, even when 
 
 ## Installing EastIndia
 
-EastIndia installs from one MSI, as Docker Desktop installs from its own installer. Hyper-V must be enabled, and Windows must be build 26100 or later.
+EastIndia installs from one MSI, as Docker Desktop installs from its own installer. Hyper-V must be enabled, and Windows must be Windows 11 Pro or Enterprise, x64, build 26100 or later.
 
 Each release on this repository's [Releases page](https://github.com/teaToolkit/endia/releases) has the MSI that a PC with Hyper-V uses, `eastindia-<version>.msi`. It installs both the service and the command line, `endia.exe`.
 
@@ -38,7 +39,7 @@ Each release on this repository's [Releases page](https://github.com/teaToolkit/
    msiexec /i eastindia-<version>.msi IMAGEFOLDER=M:\eastindia
    ```
 
-   Windows asks for administrator rights. Opened this way, or by double-clicking the file, the MSI shows its progress and then a window that says whether the installation succeeded, failed or was cancelled. Without `IMAGEFOLDER`, the image folder stays as already configured, or is `C:\ProgramData\EastIndia\images` on a first installation. winget passes the same setting with `--custom "IMAGEFOLDER=M:\eastindia"`.
+   Windows asks for administrator rights. Opened this way, or by double-clicking the file, the MSI shows its progress and then a window that says whether the installation succeeded, failed or was cancelled. Without `IMAGEFOLDER`, the image folder stays as already configured, or is `C:\ProgramData\EastIndia\image-folder` on a first installation. winget passes the same setting with `--custom "IMAGEFOLDER=M:\eastindia"`.
 
 3. **Sign out and in again.** The installer adds you to the `eastindia-users` group, and Windows reads an account's groups only when it signs in.
 
@@ -62,7 +63,7 @@ The installer does four things:
 
 A Windows service named `EastIndia` that was created by hand stops the MSI from installing its own. Remove it first, in an administrator prompt, with `sc.exe stop EastIndia` and then `sc.exe delete EastIndia`.
 
-**Configuration** follows Docker's `daemon.json`. The settings are in `C:\ProgramData\EastIndia\config\policy.json`, which you edit in an administrator editor. The service reads the file only when it starts, so restart it afterwards with `sc.exe stop EastIndia` and then `sc.exe start EastIndia`. A key the service does not know, or a value out of range, stops it from starting, and the service log names the key. `endia info` prints every setting in effect, and the desktop app's Settings page lists the main ones under Service, with **Open settings file**.
+**Configuration** follows Docker's `daemon.json`. The settings are in `C:\ProgramData\EastIndia\config\policy.json`, which you edit in an administrator editor. The service reads the file when it starts, so restart it afterwards with `sc.exe stop EastIndia` and then `sc.exe start EastIndia`. One key is the exception: `stateRefreshMilliseconds`, 250 to 60000 with 1000 as its default, takes effect without a restart. It is how often the service reads the machines, the fleets and Hyper-V's power states into the one snapshot that `endia ps`, `endia compose ps`, `endia compose ls`, `endia inspect` and `endia info` answer from. A change you make yourself shows at once; a machine that stops by itself can take up to one interval to show. A key the service does not know, or a value out of range, stops it from starting, and the service log names the key. `endia info` prints every setting in effect, and the desktop app's Settings page lists the main ones under Service, with **Open settings file**. Its **Refresh interval**, in seconds from 0.25 to 60, changes `stateRefreshMilliseconds` with **Apply**, which works only in the app on the PC itself, not from a sandbox.
 
 ## Who may use the service
 
@@ -316,7 +317,7 @@ networks:
 * **Volumes.** A named volume is a separate disk that keeps its data until `endia compose down -v`. It belongs to one machine.
 * **Replicas.** Commands that act on one replica take `--index`, for example `endia compose exec --index 2 client ...`.
 
-`depends_on` also accepts `service_started` and `service_completed_successfully`. `environment`, `hostname`, `user`, `working_dir`, `labels`, `extra_hosts` and `restart` are also accepted, and so are `command`, `healthcheck`, `deploy` and `networks`, which the example above uses. Any other key is refused with `UNSUPPORTED_FIELD`, naming it, so a typing mistake never passes silently. `endia compose config` shows the file as EastIndia reads it.
+`depends_on` also accepts `service_started` and `service_completed_successfully`. `environment`, `env_file`, `hostname`, `container_name`, `user`, `working_dir`, `entrypoint`, `labels`, `extra_hosts`, `restart`, `expose`, `scale`, `cpus`, `mem_limit`, `stop_grace_period`, `platform` and `develop.watch` are also accepted, and so are `image`, `build`, `command`, `healthcheck`, `ports`, `volumes`, `depends_on`, `deploy` and `networks`. `deploy` takes only `replicas` and `resources.limits`, and `x-eastindia` takes `screen`. Any other key is refused with `UNSUPPORTED_FIELD`, naming it, so a typing mistake never passes silently. `endia compose config` shows the file as EastIndia reads it.
 
 **Launching again over a running fleet.** Running `endia compose up` again for a fleet that is already up brings it to what the file now says. By default it recreates only a machine whose service or image changed, keeps every other machine as it is, and leaves alone a machine whose service is no longer in the file, as Docker Compose does. Recreating a machine removes it with its disk and creates it again from its image. These options change that, and matter mostly when the fleet is already up:
 
@@ -564,6 +565,104 @@ Here a test builds an image with the software under test and its Windows setting
 
 6. **Shut the fleet down.** The shell's `trap` line from step 3 runs `endia compose -p "$project" down -v` when the script ends, whether it passed or failed. That removes the machines, the private network and the named volumes.
 
+## Saying what a fleet is for and how far it has got
+
+Several callers can use one PC at the same time: you, agents in sandboxes and test scripts. A **purpose** says what a fleet or machine is being used for. **Progress** is the caller's own count of how far that work has got. With both, the desktop app's Home page tells a run that is nearly done from one that has just begun, and a slow run from a stuck one, as long as the caller keeps its count up to date. EastIndia stores the counts, adds them up and draws them. It never estimates progress: a bar moves only when a caller reports a count.
+
+### The purpose
+
+Give a fleet its purpose when you launch it. A purpose has a title, one line given with `--purpose`, and optional notes, a Markdown file given with `--purpose-file`, such as what the run covers, whom to ask and what not to touch:
+
+```sh
+endia compose -p nightly up --wait --purpose "Nightly build and test" --purpose-file notes.md
+```
+
+Change it at any time with `endia update`, which names a fleet or a machine:
+
+```sh
+endia update nightly --purpose "Nightly build and test, retrying the login tests"
+endia update nightly-runner-1 --purpose "Debugging the login timeout"
+endia update nightly-runner-1 --purpose ""
+```
+
+- **A machine has its fleet's purpose** until it is given one of its own, which applies to that machine only. `endia update nightly-runner-1 --purpose ""` clears that machine's own purpose, and the machine then has the fleet's purpose again.
+- **`--purpose` replaces the whole purpose,** so give `--purpose-file` again to keep the notes. `--purpose-file -` reads the notes from standard input.
+- **The limits:** a title is 1 to 200 characters without a line break, and the notes are at most 65536 bytes of UTF-8.
+- **Who set it:** the service records the caller with each purpose, which over HTTPS is the client certificate's name, such as `sandbox-1`.
+
+`endia purpose show <fleet or machine>` prints the purpose in effect, who set it and when, then the notes. `--history` adds every change. When a fleet and a machine share a name, `endia update` and `endia purpose show` take `--fleet` or `--machine` to choose. `endia compose down` writes the fleet's history to its operation log before it removes the fleet, so the record outlives the run. `endia update` replaces the earlier `endia purpose set` and `endia purpose clear`, which no longer exist.
+
+### Progress
+
+A caller reports progress as counts of whatever it counts, such as files, tests or images:
+
+| Option | Given to | Meaning |
+|---|---|---|
+| `--progress` | a machine | How much of the work the machine has done, a whole number from 0. |
+| `--workload` | a fleet or a machine | The total amount of work, a whole number from 0. |
+| `--stage` | a fleet | What the work is doing now, in your own words, 1 to 200 characters without a line break. |
+
+A fleet's done figure is always the sum of its machines' progress, so a fleet takes no `--progress` count of its own. EastIndia shows a stage exactly as given and reads nothing from it, so a step number such as `Run tests 2/2` is part of your text.
+
+- **The total is held in one place:** on the fleet or on its machines, never on both, because two totals for one piece of work could disagree. Whichever arrives first stays until it is removed. The other is refused with `PROGRESS_CONFLICT`, whose message says which holds the total: `nightly holds the workload; send the machine's progress only`, or `machines of nightly hold workloads; remove them first`.
+- **A machine sends its workload with its progress,** in the same command. Progress alone is accepted; a workload alone is refused with `INVALID_REQUEST`.
+- **A support machine sends 0 of 0.** A machine that only serves the others, such as a cache, sends `--progress 0 --workload 0` and is left out of the fleet's sums.
+- **Progress above the workload** is accepted and shows as 100 per cent.
+- **Stopped and exited machines keep their counts** in the fleet's sums, because work done stays done.
+- **Setting a stage starts a new one.** It removes the machines' counts and workloads and the fleet's workload, and adds the stage that ended, with its final figures, to the history that `endia purpose show --history` prints. `--stage ""` ends the stage without starting another. A count is not added to the history, so send one as often as you like.
+
+When the machines hold the workloads but a running machine has none, the fleet is open-ended: its bar shows how far the measured work has got, and that more work is still running.
+
+### A nightly run
+
+The fleet `nightly` has three runners and a cache, `nightly-shop-1`. In the first stage the fleet counts the images it builds; in the second each runner counts its own tests:
+
+```sh
+endia update nightly --purpose "Nightly build and test" --stage "Build images 1/2" --workload 3
+endia update nightly-runner-1 --progress 1
+endia update nightly --stage "Run tests 2/2"
+endia update nightly-runner-1 --progress 30 --workload 120
+endia update nightly-runner-2 --progress 20 --workload 80
+endia update nightly-runner-3 --progress 10 --workload 100
+endia update nightly-shop-1 --progress 0 --workload 0
+endia update nightly --progress -1
+```
+
+1. After `endia update nightly-runner-1 --progress 1`, Home shows `Build images 1/2` with the bar at 33 per cent, 1 of 3.
+2. `--stage "Run tests 2/2"` starts a new stage, which removes the counts and the fleet's workload, and adds `Build images 1/2` with 1 of 3 to the history. Home shows `Run tests 2/2` with the infinity bar until the runners report.
+3. Once the runners have reported, Home shows 20 per cent, 60 of 300. `nightly-shop-1` is left out of the sums.
+4. `endia update nightly --progress -1` removes the fleet's progress, and Home shows the infinity bar again while the fleet runs.
+
+`endia update` prints the name of the fleet or machine it changed. `endia purpose show nightly` then prints `Stage: Run tests 2/2` and `Progress: 60 of 300 (20%)`; a support machine shows `Progress: 0 of 0 (support)`. `endia ps --format '{{.Progress.Progress}}'` prints each machine's count.
+
+### Removing a value
+
+As with Docker's `docker update --memory-swap -1`, -1 removes a number and `""` removes text:
+
+| Option | Given to | What it removes |
+|---|---|---|
+| `--progress -1` | a machine | The machine's progress and its workload. |
+| `--workload -1` | a machine | The machine's workload only. |
+| `--workload -1` | a fleet | The fleet's workload, after which its machines may send their own. |
+| `--progress -1` | a fleet | All the fleet's progress: its stage, its workload and every machine's counts. The stage that ends goes into the history. |
+| `--stage ""` | a fleet | The stage, with the counts, as a new stage would. |
+| `--purpose ""` | a fleet or a machine | The purpose, and with it the progress of the same fleet or machine. |
+
+The service refuses a stage given to a machine with `INVALID_REQUEST`, because the fleet's stage covers its machines. `endia update` with no option, a count that is not a whole number from -1, a title with a line break, notes over 65536 bytes or `--purpose-file` without `--purpose` exit with 125, and nothing is sent. None of these changes is an operation: each command answers at once.
+
+### What the desktop app shows
+
+Home shows each running fleet's bar under its purpose. The fleet's purpose card, a machine's page, and the Progress columns of the fleet list and the machines table show bars too.
+
+- **The ship bar,** for work with a total: the bar fills to the percentage, with a ship whose bow is at the end of the filled part. Beside it are the percentage, the stage, the counts and when they last changed: `Run tests 2/2, 60 of 300, updated about a minute ago`.
+- **The infinity bar,** for running work with no total: a band of diagonal stripes moving left to right, with no ship and no percentage. Beside it are the stage and the done count when there is one, such as `Convert photos, 6,200`.
+- **The ship with the infinity bar ahead,** for an open-ended fleet: the ship bar, with the stripes moving in the part not yet filled. It becomes the plain ship bar when the open-ended machines stop, and the infinity bar when the measured ones finish first.
+- **No report:** a running fleet or machine that reports nothing shows the infinity bar. So does a support machine, with no words beside it. A stopped, exited or paused fleet or machine draws no bar, and keeps its counts.
+
+The stripes stand still when Windows is set to show fewer animations. A screen reader reads the bar as its figure, such as `20 per cent, 60 of 300`, or as `Running, no total given`. EastIndia's own operations, such as a build, keep their plain progress bar, so the ship always means a caller's count.
+
+From a program, the client libraries make the same change in one call: in Python `fleets.update("nightly", stage="Run tests 2/2")` and `machines.update("nightly-runner-1", progress=30, workload=120)`; in JavaScript `fleets.update("nightly", { stage: "Run tests 2/2" })` and `machines.update("nightly-runner-1", { progress: 30, workload: 120 })`.
+
 ## Driving EastIndia from a program
 
 A test runner written in C#, Python or JavaScript can call EastIndia's API through a client library rather than run `endia` and read what it prints. Each library gives every answer as a typed record. A refusal arrives as an exception that carries the API's error code, such as `NOT_FOUND` or `TIMEOUT`. A program's exit code arrives in full: 3010 stays 3010.
@@ -585,14 +684,14 @@ None of the libraries reads Compose files. To bring a fleet up, pass the project
 * **Two machines boot at a time.** The configuration key `maxParallelBoots` in `policy.json` changes the number.
 * **12 GiB of the PC's memory stays free.** A machine that would leave less is refused with `CAPACITY_REFUSED`. The check uses each machine's starting memory, not the most it may grow to. The configuration key `hostReserveMiB` changes the reserve.
 * **20 GiB of disk stays free** on the image folder's drive (`minFreeDiskGiB`).
-* **A restart of the service** stops any build or import that was running, marks it `interrupted` and removes its machines and disks. Fleet machines keep running, and the service picks them up again when it starts.
+* **A restart of the service** marks every operation that was running `interrupted`. A build or import removes its machines and disks; a fleet or machine operation leaves what it had done, and running `compose up` again continues the fleet. Fleet machines keep running, and the service picks them up again when it starts.
 
-`--format json` gives any listing as JSON for a program to read, and `endia info --format json` prints the host's description and every setting in effect as one JSON object. The command line exits with 0 on success, 1 on a failure, 125 on a usage mistake (nothing is sent) and 130 after Ctrl+C. On a failure, standard error says why. `Error response from EastIndia: <message> (<CODE>)` means the service refused the request. `Cannot connect to the EastIndia service at <address>. Is the service running?` means the command could not reach the service. Ctrl+C during a long operation such as `up` or `build` cancels it and removes what it created.
+`--format json` gives any listing as JSON for a program to read, and `endia info --format json` prints the host's description and every setting in effect as one JSON object. The command line exits with 0 on success, 1 on a failure, 125 on a usage mistake (nothing is sent) and 130 after Ctrl+C. On a failure, standard error says why. `Error response from EastIndia: <message> (<CODE>)` means the service refused the request. `Cannot connect to the EastIndia service at <address>. Is the service running?` means the command could not reach the service. Ctrl+C during a long operation cancels it. A cancelled build or import removes what it created; a cancelled `compose up` stops before its next machine, and what it has done stays done. Once `compose up` without `-d` is following the machines' logs, the first Ctrl+C runs `compose stop` instead.
 
 ## When something goes wrong
 
 * `Windows refused access to the EastIndia service` means your account is not in `eastindia-users`, or joined it after you signed in. The installer adds the person who ran it; sign out and in again after joining.
-* `endia operation ls` lists the long-running work: builds, imports and `compose up`. `endia operation logs <id>` shows what it printed, and `endia operation cancel <id>` stops it and removes what it created.
+* `endia operation ls` lists the long-running work: builds, imports, `base prepare`, `compose up` and `compose down`, prunes and image-folder moves. `endia operation logs <id>` shows what it printed, and `endia operation cancel <id>` stops it as Ctrl+C does.
 * `endia compose ps -a` and `endia ps -a` show every machine, including stopped ones, with its exit code.
 * `endia compose logs <service>` shows what a machine's main process printed.
 * `endia stats` shows each machine's processor, memory, disk and network use, and the PC's own processor and memory use.
