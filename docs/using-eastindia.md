@@ -27,16 +27,24 @@ EastIndia has no `endia run`. Machines come only from a Compose file, even when 
 
 ## Installing EastIndia
 
-EastIndia installs from one MSI, as Docker Desktop installs from its own installer. Hyper-V must be enabled, and Windows must be Windows 11 Pro or Enterprise, x64, build 26100 or later.
+EastIndia installs from an MSI, as Docker Desktop installs from its own installer. Hyper-V must be enabled, and Windows must be Windows 11 Pro or Enterprise, x64, build 26100 or later.
 
-Each release on this repository's [Releases page](https://github.com/teaToolkit/endia/releases) has the MSI that a PC with Hyper-V uses, `eastindia-<version>.msi`. It installs both the service and the command line, `endia.exe`.
+Each release on this repository's [Releases page](https://github.com/teaToolkit/EastIndia/releases) has three MSIs:
 
-1. **Download the MSI** from the [Releases page](https://github.com/teaToolkit/endia/releases). The MSI and the programs in it carry one version, which `endia --version` prints. It is `major.minor.patch`, and a later version always replaces an earlier one.
+| MSI | What it installs |
+|---|---|
+| `EastIndiaDesktop-<version>.msi` | The service, the command line `endia.exe` and the desktop app. Choose this for a developer's PC. |
+| `EastIndiaService-<version>.msi` | The service and the command line, without the desktop app. |
+| `EastIndiaCLI-<version>.msi` | The command line on its own. |
+
+East India Desktop and East India Service each replace the other, because a PC runs one EastIndia service. East India CLI installs beside either. The steps below install East India Desktop; the others install the same way.
+
+1. **Download the MSI** from the [Releases page](https://github.com/teaToolkit/EastIndia/releases). The MSI and the programs in it carry one version, which `endia --version` prints. It is `major.minor.patch`, and a later version always replaces an earlier one.
 
 2. **Install it**, naming the image folder, which holds EastIndia's Windows discs, disks and virtual machines:
 
    ```
-   msiexec /i eastindia-<version>.msi IMAGEFOLDER=M:\eastindia
+   msiexec /i EastIndiaDesktop-<version>.msi IMAGEFOLDER=M:\eastindia
    ```
 
    Windows asks for administrator rights. Opened this way, or by double-clicking the file, the MSI shows its progress and then a window that says whether the installation succeeded, failed or was cancelled. Without `IMAGEFOLDER`, the image folder stays as already configured, or is `C:\ProgramData\EastIndia\image-folder` on a first installation. winget passes the same setting with `--custom "IMAGEFOLDER=M:\eastindia"`.
@@ -55,15 +63,15 @@ The installer does four things:
 
   It checks each download against the hash in Microsoft's release list. A download needs internet access; without it, the installation fails and is rolled back. The client needs only .NET itself. The server also needs ASP.NET Core and the Windows Desktop framework. The guest programs use the Windows Desktop framework: `endia base prepare` copies the server's .NET into each new Windows for them.
 * It prepares the PC, as a Linux package's post-install script does. It creates the `eastindia-users` group and adds you to it. It sets the image folder. To change it later, run the MSI again with `IMAGEFOLDER` set to the new folder: the setup step then uses that folder in place of the configured one. It gives the local `eastindia` account, which EastIndia signs in to Hyper-V as, access to Hyper-V. It creates EastIndia's certificate authority. Each step changes only what differs, and every upgrade repeats them. It writes what it did to `C:\ProgramData\EastIndia\install.log`.
-* It installs and starts the Windows service `EastIndia`. The service starts with Windows, and Windows restarts it 60 seconds after a failure.
+* It installs and starts the Windows service `TeaToolkit.EastIndia`. The service starts with Windows, and Windows restarts it 60 seconds after a failure.
 
 **Updating** is installing a newer MSI. It stops and removes the installed service and programs, installs the new ones, prepares the PC again and starts the service, and it keeps your images, records, certificates and the downloaded .NET. An older MSI refuses to install over a newer one.
 
-**Uninstalling**, from Settings > Apps or with `msiexec /x eastindia-<version>.msi`, removes the programs, the service and the downloaded .NET. The downloaded .NET stays while the other MSI's programs, the client's or the server's, are still installed. Uninstalling leaves `C:\ProgramData\EastIndia`, the image folder, the `eastindia-users` group and EastIndia's Hyper-V account.
+**Uninstalling**, from Settings > Apps or with `msiexec /x EastIndiaDesktop-<version>.msi`, removes the programs, the service and the downloaded .NET. The downloaded .NET stays while East India CLI is still installed. Uninstalling leaves `C:\ProgramData\EastIndia`, the image folder, the `eastindia-users` group and EastIndia's Hyper-V account.
 
-A Windows service named `EastIndia` that was created by hand stops the MSI from installing its own. Remove it first, in an administrator prompt, with `sc.exe stop EastIndia` and then `sc.exe delete EastIndia`.
+A Windows service named `TeaToolkit.EastIndia` that was created by hand stops the MSI from installing its own. Remove it first, in an administrator prompt, with `sc.exe stop TeaToolkit.EastIndia` and then `sc.exe delete TeaToolkit.EastIndia`.
 
-**Configuration** follows Docker's `daemon.json`. The settings are in `C:\ProgramData\EastIndia\config\policy.json`, which you edit in an administrator editor. The service reads the file when it starts, so restart it afterwards with `sc.exe stop EastIndia` and then `sc.exe start EastIndia`. One key is the exception: `stateRefreshMilliseconds`, 250 to 60000 with 1000 as its default, takes effect without a restart. It is how often the service reads the machines, the fleets and Hyper-V's power states into the one snapshot that `endia ps`, `endia compose ps`, `endia compose ls`, `endia inspect` and `endia info` answer from. A change you make yourself shows at once; a machine that stops by itself can take up to one interval to show. A key the service does not know, or a value out of range, stops it from starting, and the service log names the key. `endia info` prints every setting in effect, and the desktop app's Settings page lists the main ones under Service, with **Open settings file**. Its **Refresh interval**, in seconds from 0.25 to 60, changes `stateRefreshMilliseconds` with **Apply**, which works only in the app on the PC itself, not from a sandbox.
+**Configuration** follows Docker's `daemon.json`. The settings are in `C:\ProgramData\EastIndia\config\policy.json`, which you edit in an administrator editor. The service reads the file when it starts, so restart it afterwards with `sc.exe stop TeaToolkit.EastIndia` and then `sc.exe start TeaToolkit.EastIndia`. One key is the exception: `stateRefreshMilliseconds`, 250 to 60000 with 1000 as its default, takes effect without a restart. It is how often the service reads the machines, the fleets and Hyper-V's power states into the one snapshot that `endia ps`, `endia compose ps`, `endia compose ls`, `endia inspect` and `endia info` answer from. A change you make yourself shows at once; a machine that stops by itself can take up to one interval to show. A key the service does not know, or a value out of range, stops it from starting, and the service log names the key. `endia info` prints every setting in effect, and the desktop app's Settings page lists the main ones under Service, with **Open settings file**. Its **Refresh interval**, in seconds from 0.25 to 60, changes `stateRefreshMilliseconds` with **Apply**, which works only in the app on the PC itself, not from a sandbox.
 
 ## Who may use the service
 
@@ -92,7 +100,7 @@ The service's HTTPS address is the PC's own loopback address, `127.0.0.1:7443`. 
 
 3. **Copy the file into the sandbox as a file.** Do not store it as a sandbox secret (`sbx secret`). The proxy then opens the encrypted connection itself, and the service never sees the client certificate.
 
-4. **Get the Linux command line.** The MSI holds only the Windows command line. Download `endia-linux-x64` from the [Releases page](https://github.com/teaToolkit/endia/releases), make it executable with `chmod +x endia-linux-x64`, and put it on the sandbox's `PATH` as `endia`.
+4. **Get the Linux command line.** The MSI holds only the Windows command line. Download `endia-linux-x64` from the [Releases page](https://github.com/teaToolkit/EastIndia/releases), make it executable with `chmod +x endia-linux-x64`, and put it on the sandbox's `PATH` as `endia`.
 
 5. **Import the context and use it**, in the sandbox, then delete the file:
 

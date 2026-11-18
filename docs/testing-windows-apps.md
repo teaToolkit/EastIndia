@@ -20,7 +20,7 @@ You need three things from whoever runs the EastIndia PC:
 
 1. **A context file**, `<name>.eastindiacontext`. It holds the service's address and a client certificate. The PC's owner makes it with `endia context export <name>` on the PC; the certificate lasts 365 days.
 2. **Network access to the service.** From a Docker sandbox on the PC, the service is at `host.docker.internal:7443`, and the sandbox's policy must allow `localhost:7443` (`sbx policy allow network --sandbox <sandbox> localhost:7443`, run on the PC). The same applies to every port you publish from a machine, described in "Networks".
-3. **The `endia` command line** for your platform. For Linux, download `endia-linux-x64` from the [Releases page](https://github.com/teaToolkit/endia/releases).
+3. **The `endia` command line** for your platform. For Linux, download `endia-linux-x64` from the [Releases page](https://github.com/teaToolkit/EastIndia/releases).
 
 Then, in your environment:
 

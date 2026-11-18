@@ -8,11 +8,11 @@ This repository holds the releases and the user documentation. The service's sou
 
 East India needs a Windows PC with Hyper-V enabled, running Windows 11 Pro or Enterprise, x64, build 26100 or later.
 
-1. Download `eastindia-<version>.msi` from the [Releases page](https://github.com/teaToolkit/endia/releases). It installs the East India service and the command line, `endia.exe`.
+1. Download `EastIndiaDesktop-<version>.msi` from the [Releases page](https://github.com/teaToolkit/EastIndia/releases). It installs the East India service, the command line `endia.exe` and the desktop app. The same page has `EastIndiaService-<version>.msi`, the service and the command line without the desktop app, and `EastIndiaCLI-<version>.msi`, the command line on its own.
 2. Install it, naming the folder that will hold your images:
 
    ```
-   msiexec /i eastindia-<version>.msi IMAGEFOLDER=M:\eastindia
+   msiexec /i EastIndiaDesktop-<version>.msi IMAGEFOLDER=M:\eastindia
    ```
 
 To run the command line on Linux, such as in a Docker sandbox on the same PC, download `endia-linux-x64` from the same Releases page.
