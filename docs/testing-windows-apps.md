@@ -84,7 +84,7 @@ trap 'endia compose -p "$run" down -v' EXIT
 endia compose -p "$run" up --wait --wait-timeout 900
 ```
 
-Say what the run is for and how far it has got, so that whoever watches the desktop app's Home page can tell a slow run from a stuck one. Give the purpose to `up` with `--purpose "Regression run 412"`, then report each stage and count with `endia update` as the script goes:
+Say what the run is for and how far it has got, so that whoever watches the desktop app's Home page can tell a slow run from a stuck one. Give the purpose to `up` with `--purpose "Regression run 412"`: a short title in plain words that a person reads on Home, with file names, folders and test IDs kept for the notes file (`--purpose-file`). Then report each stage and count with `endia update` as the script goes:
 
 ```sh
 endia update "$run" --stage "Run tests 2/2" --workload 120

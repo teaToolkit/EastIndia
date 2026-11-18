@@ -585,6 +585,8 @@ Give a fleet its purpose when you launch it. A purpose has a title, one line giv
 endia compose -p nightly up --wait --purpose "Nightly build and test" --purpose-file notes.md
 ```
 
+**Write the title for the person watching the PC.** The desktop app shows it on Home, on one line, beside each running fleet, so say in plain words what the run is doing and why, in about 60 characters or fewer: `Checkout smoke tests before the 2.4 release`, not `smoke-2/test_checkout.py_test_pay_with_card_as_admin`. File names, folders, test IDs and timestamps belong in the notes file, where the app shows them in full. A longer title is cut off with an ellipsis.
+
 Change it at any time with `endia update`, which names a fleet or a machine:
 
 ```sh
